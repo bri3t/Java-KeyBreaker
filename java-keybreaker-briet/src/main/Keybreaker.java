@@ -20,6 +20,12 @@ public class Keybreaker {
     }
 
     private boolean processArgs() {
+
+        if (args.length == 1 && args[0].equalsIgnoreCase("help")) {
+            System.out.println("Help:");
+            return false;
+        }
+
         if (args.length < 2 || args.length > 4) {
             String text = args.length < 2 ? "Missing args" : "Too much args";
             System.out.println(text);
@@ -27,12 +33,11 @@ public class Keybreaker {
         }
         action = args[0];
         inputFile = args[1];
-        
-        
+
         if (!checkActions(action)) {
-            System.out.println("el action esta mal");
             return false;
         }
+
         if (!checkFile(inputFile)) {
             System.out.println("nombre fichero incorrecto");
             return false;
@@ -42,7 +47,9 @@ public class Keybreaker {
         }
 
         if (args.length == 4) {
-            if (!checkNotSameOptions()) return checkOptions(args[3]);
+            if (!checkNotSameOptions()) {
+                return checkOptions(args[3]);
+            }
             System.out.println("Both options can't be the same");
             return false;
         }
@@ -51,7 +58,18 @@ public class Keybreaker {
     }
 
     private boolean checkActions(String action) {
-        return Arrays.asList(validActions).contains(action);
+        // Check if the action is "help" and return false if it is
+        if (action.equalsIgnoreCase("help")) {
+            System.out.println("Invalid syntax usage");
+            return false;
+        }
+        // Continue to check if the action is contained in the validActions array
+        boolean result = Arrays.asList(validActions).contains(action);
+        if (!result) {
+            System.out.println("el action esta mal");
+        }
+
+        return result;
     }
 
     private boolean checkFile(String fileName) {
@@ -60,7 +78,6 @@ public class Keybreaker {
 
     private boolean checkOptions(String arg) {
         if (checkOptionsLenght(arg)) {
-
             if (arg.startsWith("--out=") || arg.startsWith("--pwdfile=") && arg.endsWith(".txt")) {
                 if (arg.startsWith("--out=")) {
                     outputFile = arg.substring(6);
@@ -68,11 +85,9 @@ public class Keybreaker {
                     passwordFile = arg.substring(10);
                 }
                 return true;
-            } else {
-                System.out.println("Invalid option: " + arg);
-                return false;
-            }
+            } 
         }
+        System.out.println("Invalid option: " + arg);
 
         return false;
     }
@@ -82,6 +97,10 @@ public class Keybreaker {
     }
 
     private boolean checkNotSameOptions() {
+        if (args[2].length() < 6 || args[3].length() < 6 ) {
+            return false;
+        }
+        
         return (args[2].substring(0, 6).equals(args[3].substring(0, 6)));
     }
 

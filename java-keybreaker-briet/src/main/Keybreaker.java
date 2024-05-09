@@ -1,6 +1,7 @@
 package main;
 
 import java.util.Arrays;
+import java.util.HashMap;
 
 public class Keybreaker {
 
@@ -9,13 +10,34 @@ public class Keybreaker {
     private String[] args;
     private String action = "";
     private String inputFile = "";
-    private String outputFile = null;
-    private String passwordFile = null;
+    private String outputFile = "";
+    private String passwordFile = "";
+    int toDo = -1;
+    Logic logica = new Logic();
+    HashMap<String, String> mapToDo = new HashMap<>();
 
     public Keybreaker(String[] args) {
         this.args = args;
         if (!processArgs()) {
             printHelp();
+        } else {
+            startFunction(toDo);
+        }
+    }
+
+    private void startFunction(int num) {
+        switch (num) {
+            case 1: // decrypt
+                System.out.println("decrypt");
+
+//                logica.encrypt();
+                logica.decrypt(mapToDo);
+                break;
+            case 2: // replace
+                System.out.println("replace");
+                break;
+            default:
+                printHelp();
         }
     }
 
@@ -37,13 +59,12 @@ public class Keybreaker {
         if (!checkActions(action)) {
             return false;
         }
-
         if (!checkFile(inputFile)) {
-            System.out.println("nombre fichero incorrecto");
             return false;
         }
+
         if (args.length >= 3) {
-            checkOptions(args[2]);
+            if(!checkOptions(args[2])) return false;
         }
 
         if (args.length == 4) {
@@ -53,6 +74,10 @@ public class Keybreaker {
             System.out.println("Both options can't be the same");
             return false;
         }
+
+        mapToDo.put("out", outputFile);
+        mapToDo.put("pwd", passwordFile);
+        mapToDo.put("file", inputFile);
 
         return true;
     }
@@ -65,15 +90,22 @@ public class Keybreaker {
         }
         // Continue to check if the action is contained in the validActions array
         boolean result = Arrays.asList(validActions).contains(action);
+
         if (!result) {
             System.out.println("el action esta mal");
+        } else {
+            toDo = action.equals("decrypt") ? 1 : (action.equals("replace") ? 2 : 0);
         }
 
         return result;
     }
 
     private boolean checkFile(String fileName) {
-        return fileName.endsWith(".txt");
+        boolean result = fileName.endsWith(".txt");
+        if (!result) {
+            System.out.println("nombre fichero incorrecto");
+        }
+        return result;
     }
 
     private boolean checkOptions(String arg) {
@@ -85,7 +117,7 @@ public class Keybreaker {
                     passwordFile = arg.substring(10);
                 }
                 return true;
-            } 
+            }
         }
         System.out.println("Invalid option: " + arg);
 
@@ -97,10 +129,10 @@ public class Keybreaker {
     }
 
     private boolean checkNotSameOptions() {
-        if (args[2].length() < 6 || args[3].length() < 6 ) {
+        if (args[2].length() < 6 || args[3].length() < 6) {
             return false;
         }
-        
+
         return (args[2].substring(0, 6).equals(args[3].substring(0, 6)));
     }
 

@@ -4,6 +4,7 @@ import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -34,7 +35,7 @@ public class Logic {
     private static int[] indices = new int[5];
 
     private static final String BLUE = "\033[1;94m";    // BLUE
-    private static final String GREEN = "\033[0;102m";    // BLUE
+    private static final String PURPLE = "\u001B[35m";    // BLUE
     private final String RESET = "\033[0m";
 
     private final byte[] IV_PARAM = {0x00, 0x01, 0x02, 0x03,
@@ -42,7 +43,7 @@ public class Logic {
         0x08, 0x09, 0x0A, 0x0B,
         0x0C, 0x0D, 0x0E, 0x0F};
 
-    String passwordFile = "./passwords.txt";
+    String passwordFile = "passwords.txt";
     String outFile = null;
 
     public SecretKey keygenKeyGenerator(int keySize, String password) {
@@ -99,7 +100,7 @@ public class Logic {
     public void encrypt() {
         byte[] encryptedData = encryptOrDecrypt(keygenKeyGenerator(128, "aazzz"), "Holaa".getBytes(), true);
 
-        try ( FileOutputStream outputStream = new FileOutputStream(new File("./encriptado2.txt"))) {
+        try (FileOutputStream outputStream = new FileOutputStream(new File("encriptado2.txt"))) {
             BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(outputStream));
             bufferedWriter.write(new String(encryptedData));
             bufferedWriter.close();
@@ -109,38 +110,34 @@ public class Logic {
     }
 
     private void checkAndCreateFile(File file) {
-        if (!file.isFile()) {
-            try {
+        try {
+            if (!file.isFile()) {
                 file.createNewFile();
-            } catch (IOException e) {
-                e.printStackTrace();
-                System.err.println("Error al crear el archivo: " + e.getMessage());
-                System.exit(0);
             }
+        } catch (IOException ex) {
         }
     }
 
     public void decrypt(HashMap<String, String> mapToDo) {
-        if (mapToDo.containsKey("pwd")) {
+        if (mapToDo.containsKey("pwd") && !mapToDo.get("pwd").isBlank()) {
             passwordFile = mapToDo.get("pwd");
         }
 
-        if (mapToDo.containsKey("out")) {
-            System.out.println("asdf");
+        if (mapToDo.containsKey("out") && !mapToDo.get("out").isBlank()) {
             outFile = mapToDo.get("out");
         }
 
+//        System.out.println(mapToDo.get("file"));
         File fileToDecrypt = new File(mapToDo.get("file"));
 
         // Verificar si el archivo existe, si no, crearlo
         File file = new File(passwordFile);
         checkAndCreateFile(file);
-       
 
         byte[] dataEncripted = fileToByteArray(fileToDecrypt);
 
         byte[] data = null;
-        try ( Scanner scanner = new Scanner(file)) {
+        try (Scanner scanner = new Scanner(file)) {
             while (scanner.hasNext()) {
                 String word = scanner.next();
                 System.out.println(word);
@@ -148,16 +145,23 @@ public class Logic {
                 if (data != null) {
                     String decText = new String(data);
                     if (outFile == null) {
-                        System.out.println("********************************");
-                        System.out.print("Ha encontrado en fichero: ");
-                        System.out.println(decText);
-                        System.out.println("********************************");
+                        printResultText(decText);
+                        if (validateMessage(decText)) {
+                            appendPassword(word, passwordFile);
+                            System.out.println("Contraseña guardada en el fichero de contraseñas.");
+                        }
+                        return;
                     } else {
-                        System.out.println(outFile);
                         File fileOut = new File(outFile);
                         checkAndCreateFile(fileOut);
                         appendText(decText, outFile);
-                        System.out.println(GREEN + "Texto guardado en el fichero: " + outFile + RESET);
+                        if (validateMessage(decText)) {
+                            appendPassword(word, passwordFile);
+                            System.out.println("Contraseña guardada en el fichero de contraseñas.");
+                            System.out.println(PURPLE + "Texto guardado en el fichero: " + outFile + RESET);
+                        }else{
+                            data = null;
+                        }
                     }
                 }
             }
@@ -167,9 +171,8 @@ public class Logic {
 
         if (data == null) {
             generateStrings(dataEncripted);
-        } else {
-
-        }
+        } 
+        System.out.println("No quedan mas palabras por probar. Lo siento :(");
 
     }
 
@@ -195,13 +198,11 @@ public class Logic {
             if (dataFinal != null) {
                 String decText = new String(dataFinal);
                 if (isValidDecryptedText(decText)) {
-                    System.out.println("********************************");
-                    System.out.println("Mensaje encontrado.");
-                    System.out.println(BLUE + decText + RESET);
-                    System.out.println("********************************");
+
+                    printResultText(decText);
 
                     if (validateMessage(decText)) {
-                        appendText(word, passwordFile);
+                        appendPassword(word, passwordFile);
                         System.out.println("Contraseña guardada en el fichero de contraseñas.");
                         continuar = false;
                         return false;
@@ -222,17 +223,52 @@ public class Logic {
         return false;
     }
 
-    private void appendText(String password, String file) {
+    private void printResultText(String text) {
+        System.out.println("********************************");
+        System.out.println("Mensaje encontrado.");
+        System.out.println(BLUE + text + RESET);
+        System.out.println("********************************");
+    }
 
-        try ( FileWriter fw = new FileWriter(file, true)) {  // true para habilitar el modo de append
-            fw.write(password + "\n");  // Añade el password seguido de un salto de línea
+    private void appendPassword(String password, String file) {
+        File archivo = new File(file);
+
+        // Si el archivo no existe, simplemente regresa sin hacer nada.
+        if (!archivo.exists()) {
+            return;
+        }
+
+        // Leer el contenido del archivo para verificar si la contraseña ya existe.
+        try (Scanner scanner = new Scanner(archivo)) {
+            while (scanner.hasNextLine()) {
+                String existingPassword = scanner.nextLine();
+                if (existingPassword.equals(password)) {
+                    return;
+                }
+            }
+        } catch (FileNotFoundException e) {
+            return;
+        }
+
+        // Añade la contraseña al archivo si no existe.
+        try (FileWriter fw = new FileWriter(archivo, true)) {
+            fw.write(password + "\n");  // Añade la contraseña seguida de un salto de línea
         } catch (IOException e) {
+        }
+    }
+
+    private void appendText(String text, String file) {
+
+        try (FileWriter fw = new FileWriter(file, true)) {  // true para habilitar el modo de append
+            fw.write(text + "\n");  // Añade el password seguido de un salto de línea
+        } catch (IOException e) {
+            e.printStackTrace();
             System.err.println("Ocurrió un error al escribir en el archivo: " + e.getMessage());
         }
     }
 
     private boolean validateMessage(String text) {
-        String promptMessage = String.format("El texto: \"%s\" ¿te parece lógico?\n"
+        String promptMessage = String.format("\nEl texto: \"%s\" ¿te parece lógico?\n"
                 + "1. Sí\n"
                 + "2. No\n"
                 + "> ", text);
@@ -274,18 +310,13 @@ public class Logic {
 
         byte[] arxiuBytes = new byte[(int) arxiu.length()];
 
-        try ( FileInputStream inputStream = new FileInputStream(arxiu)) {
+        try (FileInputStream inputStream = new FileInputStream(arxiu)) {
             inputStream.read(arxiuBytes);
         } catch (IOException ex) {
             System.out.println(ex.getMessage());
         }
 
         return arxiuBytes;
-    }
-
-    public static void main(String[] args) {
-//        generateStrings(1000);  // Ejemplo: Generar y mostrar 100 cadenas consecutivas
-        Logic logic = new Logic();
     }
 
 }

@@ -28,13 +28,11 @@ public class Keybreaker {
     private void startFunction(int num) {
         switch (num) {
             case 1: // decrypt
-                System.out.println("decrypt");
 
 //                logica.encrypt();
                 logica.decrypt(mapToDo);
                 break;
             case 2: // replace
-                System.out.println("replace");
                 break;
             default:
                 printHelp();
@@ -64,15 +62,20 @@ public class Keybreaker {
         }
 
         if (args.length >= 3) {
-            if(!checkOptions(args[2])) return false;
+            if (!checkOptions(args[2])) {
+                return false;
+            }
         }
 
         if (args.length == 4) {
             if (!checkNotSameOptions()) {
-                return checkOptions(args[3]);
+                if (!checkOptions(args[3])) {
+                    return false;
+                }
+            } else {
+                System.out.println("Las dos opciones no pueden ser iguales: " + args[2] + " - " + args[3]);
+                return false;
             }
-            System.out.println("Both options can't be the same");
-            return false;
         }
 
         mapToDo.put("out", outputFile);
@@ -92,7 +95,7 @@ public class Keybreaker {
         boolean result = Arrays.asList(validActions).contains(action);
 
         if (!result) {
-            System.out.println("el action esta mal");
+            System.out.println("El action esta mal");
         } else {
             toDo = action.equals("decrypt") ? 1 : (action.equals("replace") ? 2 : 0);
         }

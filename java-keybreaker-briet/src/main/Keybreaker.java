@@ -28,11 +28,10 @@ public class Keybreaker {
     private void startFunction(int num) {
         switch (num) {
             case 1: // decrypt
-
-//                logica.encrypt();
-                logica.decrypt(mapToDo);
+                logica.decrypt(mapToDo, false);
                 break;
             case 2: // replace
+                logica.replace(mapToDo);
                 break;
             default:
                 printHelp();

@@ -38,6 +38,8 @@ public class Logic {
     private static final String PURPLE = "\u001B[35m";    // BLUE
     private final String RESET = "\033[0m";
 
+    private String passwordToEncrypt = null;
+
     private final byte[] IV_PARAM = {0x00, 0x01, 0x02, 0x03,
         0x04, 0x05, 0x06, 0x07,
         0x08, 0x09, 0x0A, 0x0B,
@@ -97,18 +99,6 @@ public class Logic {
 
     }
 
-    public void encrypt() {
-        byte[] encryptedData = encryptOrDecrypt(keygenKeyGenerator(128, "aazzz"), "Holaa".getBytes(), true);
-
-        try (FileOutputStream outputStream = new FileOutputStream(new File("encriptado2.txt"))) {
-            BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(outputStream));
-            bufferedWriter.write(new String(encryptedData));
-            bufferedWriter.close();
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-        }
-    }
-
     private void checkAndCreateFile(File file) {
         try {
             if (!file.isFile()) {
@@ -118,7 +108,7 @@ public class Logic {
         }
     }
 
-    public void decrypt(HashMap<String, String> mapToDo) {
+    public void decrypt(HashMap<String, String> mapToDo, boolean isReplace) {
         if (mapToDo.containsKey("pwd") && !mapToDo.get("pwd").isBlank()) {
             passwordFile = mapToDo.get("pwd");
         }
@@ -127,7 +117,6 @@ public class Logic {
             outFile = mapToDo.get("out");
         }
 
-//        System.out.println(mapToDo.get("file"));
         File fileToDecrypt = new File(mapToDo.get("file"));
 
         // Verificar si el archivo existe, si no, crearlo
@@ -145,21 +134,25 @@ public class Logic {
                 if (data != null) {
                     String decText = new String(data);
                     if (outFile == null) {
-                        printResultText(decText);
+                        printResultText(decText, word);
                         if (validateMessage(decText)) {
                             appendPassword(word, passwordFile);
                             System.out.println("Contraseña guardada en el fichero de contraseñas.");
+                            passwordToEncrypt = word;
                         }
                         return;
                     } else {
-                        File fileOut = new File(outFile);
-                        checkAndCreateFile(fileOut);
-                        appendText(decText, outFile);
+                        printResultText(decText, word);
                         if (validateMessage(decText)) {
+                            if (!isReplace) {
+                                File fileOut = new File(outFile);
+                                checkAndCreateFile(fileOut);
+                                appendText(decText, outFile);
+                            }
+                            passwordToEncrypt = word;
                             appendPassword(word, passwordFile);
                             System.out.println("Contraseña guardada en el fichero de contraseñas.");
-                            System.out.println(PURPLE + "Texto guardado en el fichero: " + outFile + RESET);
-                        }else{
+                        } else {
                             data = null;
                         }
                     }
@@ -171,12 +164,44 @@ public class Logic {
 
         if (data == null) {
             generateStrings(dataEncripted);
-        } 
-        System.out.println("No quedan mas palabras por probar. Lo siento :(");
+        }
 
     }
 
-    public void replace() {
+    public void encrypt(String password, String textToEncrypt, String file) {
+        byte[] encryptedData = encryptOrDecrypt(keygenKeyGenerator(128, password), textToEncrypt.getBytes(), true);
+
+        File fileOut = new File(file);
+        if (!fileOut.isFile()) {
+            checkAndCreateFile(fileOut);
+        }
+
+        try (FileOutputStream outputStream = new FileOutputStream(new File(file), false)) {
+            BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(outputStream));
+            System.out.println(new String(encryptedData));
+            bufferedWriter.write(new String(encryptedData));
+            bufferedWriter.flush(); // Asegura que todo el contenido se escribe en el archivo
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+
+        System.out.println("\n********************************");
+        System.out.println(BLUE + "Nuevo texto encriptado: " + textToEncrypt + RESET);
+        System.out.println("********************************\n");
+
+    }
+
+    public void replace(HashMap<String, String> mapToDo) {
+
+        decrypt(mapToDo, true);
+        System.out.print("\nIntroduce el texto nuevo para encriptar: "
+                + "\n>");
+        sc.nextLine();
+        String text = sc.nextLine();
+
+        String file = outFile == null ? mapToDo.get("file") : outFile;
+        encrypt(passwordToEncrypt, text, file);
+        System.out.println(PURPLE + "Texto guardado en el fichero: " + file + RESET);
 
     }
 
@@ -199,11 +224,12 @@ public class Logic {
                 String decText = new String(dataFinal);
                 if (isValidDecryptedText(decText)) {
 
-                    printResultText(decText);
+                    printResultText(decText, word);
 
                     if (validateMessage(decText)) {
                         appendPassword(word, passwordFile);
                         System.out.println("Contraseña guardada en el fichero de contraseñas.");
+                        passwordToEncrypt = word;
                         continuar = false;
                         return false;
                     }
@@ -223,11 +249,12 @@ public class Logic {
         return false;
     }
 
-    private void printResultText(String text) {
-        System.out.println("********************************");
-        System.out.println("Mensaje encontrado.");
+    private void printResultText(String text, String passwd) {
+        System.out.println("\n********************************");
+        System.out.print("Mensaje encontrado: ");
         System.out.println(BLUE + text + RESET);
-        System.out.println("********************************");
+        System.out.println("Password          : " + BLUE + passwd + RESET);
+        System.out.println("********************************\n");
     }
 
     private void appendPassword(String password, String file) {
